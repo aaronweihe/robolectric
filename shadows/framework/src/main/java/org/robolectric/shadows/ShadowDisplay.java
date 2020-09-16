@@ -7,11 +7,15 @@ import static org.robolectric.util.reflector.Reflector.reflector;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Point;
+import android.os.Build;
+import android.os.Build.VERSION_CODES;
 import android.util.DisplayMetrics;
 import android.view.Display;
+import android.view.Display.HdrCapabilities;
 import android.view.Surface;
 import android.view.WindowManager;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.android.internal.DisplayConfig;
 import org.robolectric.annotation.Implementation;
 import org.robolectric.annotation.Implements;
 import org.robolectric.annotation.RealObject;
@@ -397,6 +401,33 @@ public class ShadowDisplay {
       ShadowDisplayManager.changeDisplay(realObject.getDisplayId(),
           di -> di.state = state);
     }
+  }
+
+  /**
+   * Add HDR capabilities to the display sourced with displayId. see {@link HdrCapabilities} for
+   * supportedHdrTypes.
+   */
+  public static void setDisplayHdrCapabilities(
+      int displayId,
+      float maxLuminance,
+      float maxAverageLuminance,
+      float minLuminance,
+      int... supportedHdrTypes) {
+    DisplayInfo displayInfo = DisplayManagerGlobal.getInstance().getDisplayInfo(displayId);
+    if (displayInfo == null) {
+      return;
+    }
+    if (Build.VERSION.SDK_INT < VERSION_CODES.N) {
+      // HDR capabilities are not supported below Android N.
+      return;
+    }
+    HdrCapabilities hdrCapabilities =
+        new HdrCapabilities(supportedHdrTypes, maxLuminance, maxAverageLuminance, minLuminance);
+    DisplayConfig displayConfig = new DisplayConfig(displayInfo);
+    displayConfig.hdrCapabilities = hdrCapabilities;
+    displayConfig.copyTo(displayInfo);
+
+    ShadowDisplayManager.changeDisplay(displayId, displayInfo);
   }
 
   private boolean isJB() {
